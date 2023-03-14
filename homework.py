@@ -6,6 +6,7 @@ import requests
 import telegram
 from dotenv import load_dotenv
 from logging import StreamHandler
+from http import HTTPStatus
 
 
 load_dotenv()
@@ -50,8 +51,8 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.debug('Сообщение отправлено')
-    except Exception as error:
-        logger.error(f'Ошибка {error} сообщение не отправлено')
+    except Exception :
+        logger.error('Ошибка не удалось отправить сообщение')
 
 
 def get_api_answer(timestamp):
@@ -60,36 +61,32 @@ def get_api_answer(timestamp):
         response = requests.get(ENDPOINT,
                                 headers=HEADERS,
                                 params={'from_date': timestamp})
-    except Exception as error:
-        logging.error(f'Ендпоинт не доступен {error}')
-    if response.status_code != 200:
+    except Exception:
+        raise Exception('Ендпоинт не доступен')
+    if response.status_code != HTTPStatus.OK:
         raise Exception('Запрос к API не удался')
     return response.json()
 
 
 def check_response(response):
     """Проверяет ответ на соответствие документации."""
-    if type(response) != dict:
+    if not isinstance(response, dict):
         raise TypeError('Ответ пришел не ввиде словоря')
     if 'homeworks' not in response:
         raise Exception('Даного ключа нет в словаре')
-    if type(response['homeworks']) != list:
+    if not isinstance(response['homeworks'], list):
         raise TypeError('Ответ пришел не в словаре')
     return response.get('homeworks')
 
 
 def parse_status(homework):
     """Извлекает информацию о статусе домашней работы."""
-    try:
-        homework
-    except Exception:
-        raise Exception('Ошибка')
     homework_name = homework.get('homework_name')
     verdict = HOMEWORK_VERDICTS.get(homework.get('status'))
-    if ('status' not in homework or homework.get('status')
-            not in HOMEWORK_VERDICTS):
-        raise Exception('Нет ключа "status"'
-                        'или не задукоментированный статус домашней работы')
+    if 'status' not in homework:
+        raise Exception('Нет ключа статус')
+    if homework.get('status') not in HOMEWORK_VERDICTS:
+        raise Exception('Нет зарегестрированного ключа')
     if 'homework_name' not in homework:
         raise Exception('Ошибка нет ключа')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -106,14 +103,19 @@ def main():
     while True:
         try:
             response = get_api_answer(timestamp)
-            response_check = check_response(response)[0]
-            message = parse_status(response_check)
-            send_message(bot, message)
+            empty_list = []
+            check_documentation = check_response(response)[0]
+            if check_documentation == empty_list:
+                logger.error('Ошибка пустой список')
+            else: 
+                message = parse_status(check_documentation)
+                send_message(bot, message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            print(message)
             send_message(bot, message)
-        time.sleep(RETRY_PERIOD)
+            logger.error(f'{error} Ошибка, не удалось отправить сообщение')
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
