@@ -51,7 +51,7 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.debug('Сообщение отправлено')
-    except Exception :
+    except Exception:
         logger.error('Ошибка не удалось отправить сообщение')
 
 
@@ -107,7 +107,7 @@ def main():
             check_documentation = check_response(response)[0]
             if check_documentation == empty_list:
                 logger.error('Ошибка пустой список')
-            else: 
+            else:
                 message = parse_status(check_documentation)
                 send_message(bot, message)
         except Exception as error:
