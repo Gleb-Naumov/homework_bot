@@ -7,6 +7,12 @@ import telegram
 from dotenv import load_dotenv
 from logging import StreamHandler
 from http import HTTPStatus
+from exeption import (EndpoionNotResponse,
+                      APINotResponse,
+                      KeyNotInList,
+                      KeyNotExists,
+                      KeyNotRegister,
+                      StatusKeyNotExists)
 
 
 load_dotenv()
@@ -61,10 +67,10 @@ def get_api_answer(timestamp):
         response = requests.get(ENDPOINT,
                                 headers=HEADERS,
                                 params={'from_date': timestamp})
+        if response.status_code != HTTPStatus.OK:
+            raise APINotResponse('Запрос к API не удался')
     except Exception:
-        raise Exception('Ендпоинт не доступен')
-    if response.status_code != HTTPStatus.OK:
-        raise Exception('Запрос к API не удался')
+        raise EndpoionNotResponse('Ендпоинт не доступен')
     return response.json()
 
 
@@ -73,7 +79,7 @@ def check_response(response):
     if not isinstance(response, dict):
         raise TypeError('Ответ пришел не ввиде словоря')
     if 'homeworks' not in response:
-        raise Exception('Даного ключа нет в словаре')
+        raise KeyNotInList('Даного ключа нет в словаре')
     if not isinstance(response['homeworks'], list):
         raise TypeError('Ответ пришел не в словаре')
     return response.get('homeworks')
@@ -84,11 +90,11 @@ def parse_status(homework):
     homework_name = homework.get('homework_name')
     verdict = HOMEWORK_VERDICTS.get(homework.get('status'))
     if 'status' not in homework:
-        raise Exception('Нет ключа статус')
+        raise StatusKeyNotExists('Нет ключа статус')
     if homework.get('status') not in HOMEWORK_VERDICTS:
-        raise Exception('Нет зарегестрированного ключа')
+        raise KeyNotRegister('Нет зарегестрированного ключа')
     if 'homework_name' not in homework:
-        raise Exception('Ошибка нет ключа')
+        raise KeyNotExists('Ошибка нет ключа')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -103,13 +109,14 @@ def main():
     while True:
         try:
             response = get_api_answer(timestamp)
-            empty_list = []
-            check_documentation = check_response(response)[0]
-            if check_documentation == empty_list:
-                logger.error('Ошибка пустой список')
+            homeworks = check_response(response)
+            if not homeworks:
+                logger.info('Ошибка пустой словарь')
             else:
-                message = parse_status(check_documentation)
-                send_message(bot, message)
+                if (homeworks[0].get('status')
+                        != HOMEWORK_VERDICTS.get(homeworks[0].get('status'))):
+                    message = parse_status(homeworks[0])
+                    send_message(bot, message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
