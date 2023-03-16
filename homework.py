@@ -113,10 +113,12 @@ def main():
             if not homeworks:
                 logger.info('Ошибка пустой словарь')
             else:
-                if (homeworks[0].get('status')
-                        != HOMEWORK_VERDICTS.get(homeworks[0].get('status'))):
-                    message = parse_status(homeworks[0])
-                    send_message(bot, message)
+                last_message = ''
+                current_message = parse_status(homeworks[0])
+                if last_message == current_message:
+                    exit()
+                else:
+                    send_message(bot, current_message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
