@@ -106,6 +106,7 @@ def main():
     if not check_tokens():
         logger.critical('Нет переменных окружения')
         exit()
+    last_message = ''
     while True:
         try:
             response = get_api_answer(timestamp)
@@ -113,12 +114,12 @@ def main():
             if not homeworks:
                 logger.info('Ошибка пустой словарь')
             else:
-                last_message = ''
                 current_message = parse_status(homeworks[0])
                 if last_message == current_message:
-                    exit()
+                    logger.debug('Сообщение не будет отправлено')
                 else:
                     send_message(bot, current_message)
+                    last_message = parse_status(homeworks[0])
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
