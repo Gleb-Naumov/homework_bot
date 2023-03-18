@@ -112,14 +112,14 @@ def main():
             response = get_api_answer(timestamp)
             homeworks = check_response(response)
             if not homeworks:
-                logger.info('Ошибка пустой словарь')
+                None
             else:
                 current_message = parse_status(homeworks[0])
                 if last_message == current_message:
                     logger.debug('Сообщение не будет отправлено')
                 else:
                     send_message(bot, current_message)
-                    last_message = parse_status(homeworks[0])
+                    last_message = current_message
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
